@@ -7,6 +7,8 @@ Take a screenshot.
 Close the pane.
 
 ## 2 · Extensions carry over
+Send “Reply with the single word ready.” and wait for the reply.
 Run /split.
-Does the picker open?
+Does the picker open and list that exchange?
+Choose a message.
 Does a new pane show up?
