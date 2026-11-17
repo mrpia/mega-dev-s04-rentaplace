@@ -1,4 +1,5 @@
 import { addDays, daysBetween, today } from '../config.ts';
+export const MIN_STAY_NIGHTS = 3;
 import { requireValue, integer } from '../errors.ts';
 import type { Listing, Quote } from '../types.ts';
 export function validDate(date: string): boolean {
@@ -9,6 +10,11 @@ export function validateDates(from: string, to: string, future = false): number 
   const nights = daysBetween(from, to);
   requireValue(nights >= 1 && nights <= 90, 'Choose a stay between 1 and 90 nights.');
   if (future) requireValue(from >= today(), 'Check-in cannot be in the past.');
+  return nights;
+}
+export function validateBookableDates(from: string, to: string, future = false): number {
+  const nights = validateDates(from, to, future);
+  requireValue(nights >= MIN_STAY_NIGHTS, `Choose a stay between ${MIN_STAY_NIGHTS} and 90 nights.`);
   return nights;
 }
 export function isWeekend(date: string): boolean {

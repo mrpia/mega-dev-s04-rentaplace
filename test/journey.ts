@@ -44,7 +44,7 @@ try {
  const {data:payouts}=await request('/api/host/payouts');assert.ok(Array.isArray(payouts.items));const {text:csv}=await request('/api/host/payouts.csv');assert.match(csv,/Reference,Home/);await request('/host/payouts');pass('host payout history and CSV export agree');
  await request('/api/auth/signin',{method:'POST',body:{userId:'guest-1'}});
  let requestFrom='',requestTo='';
- for(let offset=1;offset<=60;offset++){const a=day(offset),b=day(offset+2);const r=await fetch(base+`/api/quote?slug=old-mill-loft&from=${a}&to=${b}&guests=2`);if(r.ok){requestFrom=a;requestTo=b;break;}}
+ for(let offset=1;offset<=60;offset++){const a=day(offset),b=day(offset+3);const r=await fetch(base+`/api/quote?slug=old-mill-loft&from=${a}&to=${b}&guests=2`);if(r.ok){requestFrom=a;requestTo=b;break;}}
  assert.ok(requestFrom,'An available request-based home window must exist');
  const pendingPayload={slug:'old-mill-loft',from:requestFrom,to:requestTo,guests:2,cardNumber:'4242 4242 4242 4242'};
  const {data:pending}=await request('/api/bookings',{method:'POST',body:pendingPayload,status:201});assert.equal(pending.booking.status,'pending');const {text:pendingPage}=await request('/bookings/'+pending.booking.id);assert.match(pendingPage,/Your request is with your host/);pass('request-based checkout holds the dates pending host review');
