@@ -26,6 +26,24 @@ test('idempotent checkout creates one booking and refuses a mismatched retry',()
  const a=createBooking(db,payload,guest),b=createBooking(db,payload,guest);assert.equal(a.booking.id,b.booking.id);assert.equal(b.replayed,true);
  assert.equal((db.prepare('SELECT COUNT(*) n FROM payouts').get() as any).n,1);assert.throws(()=>createBooking(db,{...payload,guests:3},guest),{code:'REQUEST_CONFLICT'});db.close();
 });
+test('paused and closed homes refuse quotes and checkouts and leave no reservation',()=>{
+ for(const status of ['paused','closed']) {
+  const {db}=fixture();db.prepare('UPDATE listings SET status=? WHERE slug=?').run(status,input.slug);
+  assert.throws(()=>quote(db,input.slug,input.from,input.to,2),{status:409,code:'LISTING_NOT_BOOKABLE'});
+  assert.throws(()=>createBooking(db,input,guest),{status:409,code:'LISTING_NOT_BOOKABLE'});
+  for(const table of ['bookings','payouts','email_outbox'])assert.equal((db.prepare(`SELECT COUNT(*) n FROM ${table}`).get() as any).n,0,`${status}: ${table}`);
+  db.close();
+ }
+});
+test('closing a home keeps its reservations: retries replay, guests cancel, hosts answer requests',()=>{
+ const {db}=fixture(),payload={...input,idempotencyKey:'made-before-closing'};
+ const confirmed=createBooking(db,payload,guest).booking,pending=createBooking(db,{...input,slug:'courtyard-loft'},otherGuest).booking;
+ db.prepare("UPDATE listings SET status='closed' WHERE slug=?").run(input.slug);db.prepare("UPDATE listings SET status='paused' WHERE slug='courtyard-loft'").run();
+ const retry=createBooking(db,payload,guest);assert.equal(retry.replayed,true);assert.equal(retry.booking.id,confirmed.id);
+ assert.throws(()=>createBooking(db,{...payload,idempotencyKey:'made-after-closing',from:'2026-11-20',to:'2026-11-22'},guest),{code:'LISTING_NOT_BOOKABLE'});
+ assert.equal(respondToReservation(db,pending.id,'accept',host).status,'confirmed');
+ const cancelled=cancelBooking(db,confirmed.id,guest);assert.equal(cancelled.status,'cancelled');assert.equal(cancelled.refund_cents,confirmed.total_cents);db.close();
+});
 test('reservations are visible only to their guest',()=>{
  const {db}=fixture();const {booking}=createBooking(db,input,guest);assert.equal(guestBookings(db,guest).length,1);assert.equal(guestBookings(db,otherGuest).length,0);assert.throws(()=>guestBooking(db,booking.id,otherGuest),{status:404});assert.throws(()=>cancelBooking(db,booking.id,otherGuest),{status:404});db.close();
 });
