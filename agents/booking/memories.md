@@ -16,7 +16,6 @@ Commits and PR numbers refer to this repository (github.com/mrpia/mega-dev-s04-r
 - Booking dates run on a business date, not the clock: `today()` returns `RAP_TODAY`, or 2026-11-09 when it is unset, and the tests set the same day. The past-date check at checkout and the online-cancel cutoff and refund in `cancelBooking` all use it. [f440195, 374848f, 860dbd9]
 - Outside the tests, `createBooking` writes confirmation files into the repo's `outbox/` and log lines into `logs/`, because `OUTBOX_DIR` and `LOG_DIR` fall back to those folders. A script that calls it, even against a scratch database, must set `RAP_OUTBOX_DIR` and `RAP_LOG_DIR` the way `test/setup.ts` does. [f440195, 860dbd9; seen in a conversation, 2026-11-18]
 - `cancelBooking` takes the refunded accommodation from `refundBreakdown` in cancellation.ts instead of guessing it from the refund amount. The host is paid the kept accommodation plus the holiday surcharge, less 3%, and nothing after a full refund. [2026-11-19; b2b4f67, PR #2]
-- `createBooking` saves `surcharge_cents`, `holiday_refund_days` and `free_cancel_until` on the reservation, and cancellation reads only those saved values. Later host edits never reach an existing reservation, and reservations made before migration 003 have none of the three and keep the old rules. [2026-11-19; b2b4f67, PR #2]
 
 ## Customer facing
 
