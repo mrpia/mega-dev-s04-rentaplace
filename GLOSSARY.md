@@ -26,6 +26,7 @@ One meaning per word. People and agents use these words the same way in prompts,
 - **Check-in**: the first date of a stay (`from_date`).
 - **Checkout**: the date the guest leaves (`to_date`). It is exclusive: a guest who checks out on the 12th does not occupy the night of the 12th, so another stay may check in that day.
 - **Night**: one date of a stay. A stay from the 10th to the 12th is two nights.
+- **Minimum stay**: three nights, the same for every listing and every date; hosts can't set their own. Quotes, new reservations, search and the dates on a home or checkout page need at least three nights, and no stay may be longer than 90. Reservations made before the rule are left as they are: guests can still see and cancel them, and a retried checkout still returns them.
 - **Weekend night**: a Friday or Saturday night, charged at the listing's weekend price.
 - **Holiday date**: a date the host marks as a holiday on one listing. Hosts set their own dates; the listing stores them as ranges whose first and last dates both count.
 - **Holiday night**: the night that starts on a holiday date. A holiday on the checkout date is not a holiday night of that stay, since checkout is never charged.
@@ -77,4 +78,3 @@ All money is whole US cents.
 - **Customer**, **user**. Say "guest" or "host"; they have different rights.
 - **Check-out day** as a night of the stay. Checkout is exclusive.
 - **Hold** for anything but dates. Pending and confirmed reservations hold their dates; that is the only meaning. What was first asked for as a "24-hour hold" is the **free cancellation period**.
-- **Minimum stay** has no meaning yet. No rule uses it, so define it here before building it: is it per listing or for the whole site, and does it change reservations that already exist?
