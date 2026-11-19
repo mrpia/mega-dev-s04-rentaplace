@@ -64,7 +64,7 @@
       "title": "Minimum stay by date: hosts want it for holidays starting November 16",
       "column": "on-hold",
       "owner": "Host tools",
-      "description": "Hosts want a booking-length rule for the holiday period. Confirm the number of nights, affected homes, effective date, and treatment of existing reservations before implementation.",
+      "description": "Hosts want a booking-length rule for the holiday period. Every stay already needs at least three nights, on every home and date (PR #3; GLOSSARY.md, Minimum stay), so a holiday rule only matters above three. Confirm the number of nights, affected homes, effective date, and treatment of existing reservations before implementation.",
       "labels": [
         "feature",
         "host-tools"
@@ -73,7 +73,7 @@
         "src/domain/listings.ts",
         "src/domain/bookings.ts"
       ],
-      "waitingOn": "Product decisions about the rule and existing reservations"
+      "waitingOn": "Product decisions about a holiday rule above three nights and existing reservations"
     },
     {
       "id": "calendar-pointer",
