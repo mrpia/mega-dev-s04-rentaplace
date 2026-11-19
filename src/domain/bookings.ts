@@ -17,9 +17,15 @@ export function assertAvailable(db: DatabaseSync,listingId: string,from: string,
   const block=db.prepare('SELECT id FROM blocks WHERE listing_id=? AND from_date<? AND to_date>? LIMIT 1').get(listingId,to,from);
   if(stay || block)throw new AppError(409,'DATES_UNAVAILABLE','Those dates are no longer available. Please choose another stay.');
 }
+/** Only an active listing takes new reservations. Paused and closed ones keep the reservations they already have (docs/decisions/0003). */
+export function assertBookable(db: DatabaseSync,listingId: string) {
+  const row=db.prepare('SELECT status FROM listings WHERE id=?').get(listingId) as {status: string} | undefined;
+  if(row?.status!=='active')throw new AppError(409,'LISTING_NOT_BOOKABLE','This home is not taking reservations.');
+}
 export function quote(db: DatabaseSync,slug: string,from: string,to: string,guests=2) {
   const home=listingBySlug(db,slug);
   if(!home)throw new AppError(404,'NOT_FOUND','We could not find that home.');
+  assertBookable(db,home.id);
   validateDates(from,to,true);
   assertAvailable(db,home.id,from,to);
   return priceStay(home,from,to,guests);
@@ -58,6 +64,7 @@ export function createBooking(db: DatabaseSync,input: any,account: Account | und
         return {booking:prior,replayed:true};
       }
     }
+    assertBookable(db,home.id);
     assertAvailable(db,home.id,from,to);
     const q=priceStay(home,from,to,guests),id=randomUUID(),reference=`RAP-${id.slice(0,8).toUpperCase()}`;
     const status=home.instant_book && enabled(db,'instant_booking')?'confirmed':'pending';

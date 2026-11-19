@@ -22,9 +22,9 @@ npm run rap -- search Tahoe --from 2026-11-10 --to 2026-11-13 --sort price --jso
 npm run rap -- book pine-hollow-cabin 2026-11-16 2026-11-19 2 --demo-payment --json
 ```
 
-Quotes validate dates, guest count and current availability. Each result includes a per-night array, subtotal, service fee, tax, total, and host share in cents. Search price filters are whole dollars; all stored amounts and returned price values are cents.
+Quotes validate the listing status, dates, guest count and current availability. Each result includes a per-night array, subtotal, service fee, tax, total, and host share in cents. Search price filters are whole dollars; all stored amounts and returned price values are cents.
 
-POST `/api/bookings` accepts `slug`, `from`, `to`, `guests`, `cardNumber`, optional `guestName`, `guestEmail`, and `idempotencyKey`. Use the test number only. A fresh booking returns 201; a matching idempotent retry returns 200. An overlapping reservation returns 409. Requests for homes without instant confirmation remain pending until the owning host responds.
+POST `/api/bookings` accepts `slug`, `from`, `to`, `guests`, `cardNumber`, optional `guestName`, `guestEmail`, and `idempotencyKey`. Use the test number only. A fresh booking returns 201; a matching idempotent retry returns 200. An overlapping reservation returns 409. A paused or closed home returns 409 `LISTING_NOT_BOOKABLE` for quotes and new reservations; an idempotent retry of a reservation made before the home closed still returns that reservation. Requests for homes without instant confirmation remain pending until the owning host responds.
 
 POST `/api/bookings/{id}/cancel` computes the policy refund from the saved price snapshot and adjusts scheduled payouts to the retained host share; full refunds cancel the payout. GET `/api/bookings` and `/api/bookings/{id}` are guest-scoped.
 
