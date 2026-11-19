@@ -67,3 +67,5 @@ npm run rap -- search Tahoe --from 2026-11-10 --to 2026-11-13 --json
 - `/api/openapi.json` — complete JSON API contract.
 
 See [architecture](docs/architecture.md), [API usage](docs/api.md), and the [runbook](docs/runbook.md). Work in progress is tracked in `tracker/board.json`.
+
+<!-- Throwaway line for the Domain Agent guardrails check; this pull request is closed without merging. -->
