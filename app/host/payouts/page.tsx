@@ -24,7 +24,7 @@ export default async function HostPayouts({ searchParams }: { searchParams: Sear
       <PageHeading
         eyebrow="A clear picture of your earnings"
         title="Good stays add up."
-        description="Host share is accommodation and cleaning, less a 3% platform fee."
+        description="Host share is accommodation, any holiday surcharge and cleaning, less a 3% platform fee."
         actions={<Button asChild variant="outline"><a href="/host/payouts.csv"><Download />Export CSV</a></Button>}
       />
       <div className="grid gap-4 sm:grid-cols-2">

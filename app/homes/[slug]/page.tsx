@@ -17,7 +17,7 @@ import { capitalize, dateLabel, money, plural } from '@/lib/format';
 import { firstOpenStay, stayParams } from '../../../src/stay.ts';
 import { quote } from '../../../src/domain/bookings.ts';
 import { listingCalendar, monthDates } from '../../../src/domain/calendar.ts';
-import { policyText } from '../../../src/domain/cancellation.ts';
+import { freeCancellationText, holidayWindowText, policyText } from '../../../src/domain/cancellation.ts';
 import { addDays, today } from '../../../src/config.ts';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: SearchParams };
@@ -33,7 +33,8 @@ export default async function HomeDetail({ params, searchParams }: Props) {
   const home = homeBySlug(slug);
   const search = toURLSearchParams(await searchParams);
   const database = db();
-  if (!search.has('from')) {
+  const bookable = home.status === 'active';
+  if (bookable && !search.has('from')) {
     const open = firstOpenStay((from, to) => attempt(() => quote(database, home.slug, from, to, 2)).ok);
     if (open) { search.set('from', open.from); search.set('to', open.to); }
   }
@@ -71,7 +72,7 @@ export default async function HomeDetail({ params, searchParams }: Props) {
             <span>·</span><span>{home.neighbourhood}, {home.region}</span>
           </div>
         </div>
-        <Badge variant="secondary" className="w-fit rounded-full">{home.instant_book ? 'Instant booking' : 'Request to book'}</Badge>
+        <Badge variant="secondary" className="w-fit rounded-full">{!bookable ? 'Not taking reservations' : home.instant_book ? 'Instant booking' : 'Request to book'}</Badge>
       </div>
 
       <Gallery title={home.title} photos={home.photos} />
@@ -115,7 +116,7 @@ export default async function HomeDetail({ params, searchParams }: Props) {
             </div>
           </section>
 
-          <section id="availability" className="scroll-mt-24 space-y-4">
+          {bookable ? <section id="availability" className="scroll-mt-24 space-y-4">
             <h2 className="text-3xl">Room in the calendar</h2>
             <div className="max-w-md space-y-4 rounded-2xl border bg-card p-5">
               <div className="flex items-center justify-between">
@@ -126,7 +127,7 @@ export default async function HomeDetail({ params, searchParams }: Props) {
               <MonthGrid calendar={calendar} />
               <Legend items={[['available', 'Available'], ['booked', 'Reserved'], ['blocked', 'Blocked'], ['pending', 'Request pending']]} />
             </div>
-          </section>
+          </section> : null}
 
           <section id="reviews" className="scroll-mt-24 space-y-5">
             <div className="flex items-center justify-between">
@@ -169,7 +170,10 @@ export default async function HomeDetail({ params, searchParams }: Props) {
               <li>Up to {plural(home.sleeps, 'guest')} · {home.amenities.includes('Pet friendly') ? 'Pets welcome; please include them in your note to support.' : 'Please leave pets at home.'}</li>
             </ul>
             <h3 className="pt-2 text-xl">Cancellation</h3>
-            <p className="text-sm text-muted-foreground">{policyText[home.cancellation_policy]} No refunds after check-in.</p>
+            <p className="text-sm text-muted-foreground">{freeCancellationText} {policyText[home.cancellation_policy]} No refunds after check-in.</p>
+            {home.holiday_dates.length && home.holiday_surcharge_pct && home.holiday_refund_days ? (
+              <p className="text-sm text-muted-foreground">Holiday nights ({home.holiday_dates.map((r) => r.first === r.last ? dateLabel(r.first) : `${dateLabel(r.first)} – ${dateLabel(r.last)}`).join(', ')}) cost {home.holiday_surcharge_pct}% more. {holidayWindowText(home.holiday_refund_days)}</p>
+            ) : null}
           </section>
         </div>
 
@@ -179,6 +183,12 @@ export default async function HomeDetail({ params, searchParams }: Props) {
               <p><strong className="text-2xl font-semibold">{money(home.nightly_cents)}</strong> <span className="text-sm text-muted-foreground">/ weeknight</span></p>
               <Rating value={home.rating} />
             </div>
+            {!bookable ? (
+              <div className="grid gap-5">
+                <Alert><AlertDescription>This home is not taking reservations. If you already have a stay here, it still stands; you’ll find it in Your trips.</AlertDescription></Alert>
+                <Button asChild size="lg" variant="outline" className="w-full"><Link href={`/search?place=${encodeURIComponent(home.region)}`}>See homes in {home.region}<ArrowRight /></Link></Button>
+              </div>
+            ) : <>
             <form method="get" action={`/homes/${home.slug}`} className="grid gap-3">
               <DateRangeFields from={p.from} to={p.to} min={today()} />
               <div className="grid gap-1.5"><Label htmlFor="detail-guests">Guests</Label><GuestSelect id="detail-guests" value={p.guests} max={home.sleeps} /></div>
@@ -194,6 +204,7 @@ export default async function HomeDetail({ params, searchParams }: Props) {
             ) : (
               <Alert variant="destructive"><AlertDescription>{q.error.message}</AlertDescription></Alert>
             )}
+            </>}
           </SummaryCard>
         </aside>
       </div>

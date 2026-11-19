@@ -25,7 +25,7 @@ export function transaction<T>(db: DatabaseSync, fn: () => T): T {
   catch (e) { db.exec('ROLLBACK'); throw e; }
 }
 export function decodeListing(row: any): Listing {
-  return { ...row, amenities: JSON.parse(row.amenities), photos: JSON.parse(row.photos) };
+  return { ...row, amenities: JSON.parse(row.amenities), photos: JSON.parse(row.photos), holiday_dates: JSON.parse(row.holiday_dates ?? '[]') };
 }
 export function listingBySlug(db: DatabaseSync, slug: string): Listing | undefined {
   const row = db.prepare('SELECT * FROM listings WHERE slug = ?').get(slug);

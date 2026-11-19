@@ -7,7 +7,30 @@ import { AppError, integer, textInput, requireValue } from '../errors.ts';
 import { requireUser } from '../auth.ts';
 import { now, ROOT } from '../config.ts';
 import { log } from '../log.ts';
-import type { Account } from '../types.ts';
+import { validDate } from './pricing.ts';
+import type { Account, HolidayRange, Listing } from '../types.ts';
+const HOLIDAY_FIELDS=['holidayDates','holidaySurchargePercent','holidayRefundDays'];
+// One range per line or list item: "2026-12-24", "2026-11-16 to 2027-01-06", or {first,last}. Both ends are holiday dates.
+export function parseHolidayDates(value: unknown): HolidayRange[] {
+  const items:unknown[]=Array.isArray(value)?value:typeof value==='string'?value.split(/[\n,]/).map(s=>s.trim()).filter(Boolean):[];
+  requireValue(items.length<=20,'Enter at most 20 holiday date ranges.');
+  return items.map(item=>{
+    const match=typeof item==='string'?/^(\S+)(?:\s+(?:to|–|-)\s+(\S+))?$/.exec(item):null;
+    const first=String(match?match[1]:(item as any)?.first ?? ''),last=String(match?match[2] ?? match[1]:(item as any)?.last ?? '');
+    requireValue(validDate(first) && validDate(last) && first<=last,'Enter holiday dates as YYYY-MM-DD, or a range such as 2026-11-16 to 2027-01-06.');
+    return {first,last};
+  });
+}
+// Holiday dates, surcharge percentage and refund days are set together or not at all (decision 0003).
+// An edit that sends none of the three fields keeps what the listing has.
+export function holidaySettings(input: any,old?: Listing): {dates:HolidayRange[];percent:number|null;days:number|null} {
+  if(!HOLIDAY_FIELDS.some(k=>k in input))return {dates:old?.holiday_dates ?? [],percent:old?.holiday_surcharge_pct ?? null,days:old?.holiday_refund_days ?? null};
+  const blank=(v: unknown)=>v===undefined || v===null || String(v).trim()==='';
+  const dates=parseHolidayDates(input.holidayDates);
+  if(!dates.length && blank(input.holidaySurchargePercent) && blank(input.holidayRefundDays))return {dates:[],percent:null,days:null};
+  requireValue(dates.length>0 && !blank(input.holidaySurchargePercent) && !blank(input.holidayRefundDays),'Set holiday dates, the holiday surcharge and the holiday refund days together.');
+  return {dates,percent:integer(input.holidaySurchargePercent,'Holiday surcharge (%)',1,50),days:integer(input.holidayRefundDays,'Holiday refund days',1,60)};
+}
 export const AMENITIES=['Wifi','Kitchen','Free parking','Heating','Washer','Patio','Fireplace','Air conditioning','EV charger','Lake access','Pet friendly','Workspace'];
 export function hostListings(db: DatabaseSync,user: Account | undefined) {
   const account=requireUser(user,'host');
@@ -40,9 +63,10 @@ export function saveListing(db: DatabaseSync,input: any,user: Account | undefine
   const lat=Number(input.lat ?? old?.lat ?? 38.95),lng=Number(input.lng ?? old?.lng ?? -120.05);
   requireValue(Number.isFinite(lat)&&lat>=-90&&lat<=90&&Number.isFinite(lng)&&lng>=-180&&lng<=180,'Enter valid map coordinates.');
   const instant=input.instantBook===true || input.instantBook==='1' || input.instantBook==='on'?1:0;
+  const holiday=holidaySettings(input,old);
   const id=old?.id || randomUUID(), newSlug=old?.slug || `${title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${id.slice(0,6)}`;
-  if(old)db.prepare('UPDATE listings SET title=?,description=?,neighbourhood=?,region=?,lat=?,lng=?,sleeps=?,bedrooms=?,beds=?,bathrooms=?,nightly_cents=?,weekend_cents=?,cleaning_cents=?,cancellation_policy=?,status=?,instant_book=?,amenities=?,photos=?,updated_at=? WHERE id=?').run(title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly,weekend,cleaning,policy,status,instant,JSON.stringify([...new Set(amen)]),JSON.stringify(photos),now(),id);
-  else db.prepare(`INSERT INTO listings (id,slug,host_id,title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly_cents,weekend_cents,cleaning_cents,cancellation_policy,status,instant_book,amenities,photos,created_at,updated_at) VALUES (${Array(23).fill('?').join(',')})`).run(id,newSlug,account.id,title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly,weekend,cleaning,policy,status,instant,JSON.stringify([...new Set(amen)]),JSON.stringify(photos),now(),now());
+  if(old)db.prepare('UPDATE listings SET title=?,description=?,neighbourhood=?,region=?,lat=?,lng=?,sleeps=?,bedrooms=?,beds=?,bathrooms=?,nightly_cents=?,weekend_cents=?,cleaning_cents=?,cancellation_policy=?,status=?,instant_book=?,amenities=?,photos=?,holiday_dates=?,holiday_surcharge_pct=?,holiday_refund_days=?,updated_at=? WHERE id=?').run(title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly,weekend,cleaning,policy,status,instant,JSON.stringify([...new Set(amen)]),JSON.stringify(photos),JSON.stringify(holiday.dates),holiday.percent,holiday.days,now(),id);
+  else db.prepare(`INSERT INTO listings (id,slug,host_id,title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly_cents,weekend_cents,cleaning_cents,cancellation_policy,status,instant_book,amenities,photos,holiday_dates,holiday_surcharge_pct,holiday_refund_days,created_at,updated_at) VALUES (${Array(26).fill('?').join(',')})`).run(id,newSlug,account.id,title,description,neighbourhood,region,lat,lng,sleeps,bedrooms,beds,bathrooms,nightly,weekend,cleaning,policy,status,instant,JSON.stringify([...new Set(amen)]),JSON.stringify(photos),JSON.stringify(holiday.dates),holiday.percent,holiday.days,now(),now());
   log('listing.updated',{listingId:id,created:!old,hostId:account.id,status});
   return listingBySlug(db,newSlug)!;
 }

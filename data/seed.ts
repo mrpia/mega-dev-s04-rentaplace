@@ -62,10 +62,14 @@ export function seedDatabase(db: DatabaseSync, seed = 260609): Record<string, nu
       const description = `${title} is a ${bedrooms===0?'bright studio':'welcoming '+bedrooms+'-bedroom home'} in ${r[1]}, ${r[2]}. Open the windows, put the kettle on, and settle into a slower pace. ${pick(['A covered porch catches the morning light.','A generous table makes room for shared meals.','Large windows bring the surrounding landscape inside.','The living room has a deep sofa and a shelf of books.'])}\n\nYou will have the entire place to yourself, with a full kitchen, fresh linens, and clear arrival instructions. ${pick(['The last stretch of road is unpaved; drive slowly after rain.','A short walk takes you to the neighbourhood trail.','The bedrooms are upstairs, reached by one flight of stairs.','Parking for two cars is beside the entrance.'])}`;
       listStmt.run(`home-${i+1}`,a?.slug || `${title.toLowerCase().replaceAll(' ','-')}-${r[0]}-${i+1}`,`host-${a?.host ?? (i<60?1:2+(i%119))}`,title,description,r[1],r[2],r[3]+(random()-.5)*.08,r[4]+(random()-.5)*.08,sleeps,bedrooms,Math.max(1,bedrooms+1),Math.max(1,Math.ceil(bedrooms/2)),nightly,weekend,a?.cleaning ?? (35+Math.floor(random()*70))*100,a?.policy || pick(['flexible','moderate','strict']),a?.status || (random()<.045?'paused':'active'),a?.instant ?? (random()<.8?1:0),JSON.stringify(amen),JSON.stringify([a ? `/img/photos/anchor-${a.slug}.jpg` : `/img/photos/${type}-${i % EXTERIOR_COUNTS[type]}.jpg`,`/img/photos/interior-${(i*3) % INTERIOR_COUNT}.jpg`,`/img/photos/${type}-${(i+5) % EXTERIOR_COUNTS[type]}.jpg`,`/img/photos/interior-${(i*3+11) % INTERIOR_COUNT}.jpg`]),0,0,'2026-06-01T09:00:00.000Z','2026-10-28T11:00:00.000Z');
     }
+    // Demo holiday pricing (decision 0003): set by each host per listing. Lakeside A-Frame stays without, so decision 0002's example is unchanged.
+    const holidayStmt = db.prepare('UPDATE listings SET holiday_dates=?, holiday_surcharge_pct=?, holiday_refund_days=? WHERE slug=?');
+    holidayStmt.run(JSON.stringify([{first:'2026-11-16',last:'2027-01-06'}]),25,30,'harbor-point-cottage');
+    holidayStmt.run(JSON.stringify([{first:'2026-12-19',last:'2027-01-03'}]),20,3,'cedar-ridge-lodge');
     const homes = db.prepare('SELECT * FROM listings ORDER BY rowid').all().map(decodeListing);
     const users = new Map(db.prepare('SELECT * FROM users').all().map((u:any)=>[u.id,u]));
     const occupied = new Map<string, Set<string>>();
-    const bStmt = db.prepare(`INSERT INTO bookings (id,reference,listing_id,guest_id,from_date,to_date,guests,guest_name,guest_email,status,nights,accommodation_cents,cleaning_cents,subtotal_cents,service_fee_cents,tax_cents,total_cents,host_payout_cents,refund_cents,policy,payment_status,created_at,cancelled_at) VALUES (${Array(23).fill('?').join(',')})`);
+    const bStmt = db.prepare(`INSERT INTO bookings (id,reference,listing_id,guest_id,from_date,to_date,guests,guest_name,guest_email,status,nights,accommodation_cents,cleaning_cents,subtotal_cents,service_fee_cents,tax_cents,total_cents,host_payout_cents,refund_cents,policy,payment_status,created_at,cancelled_at,surcharge_cents,holiday_refund_days,free_cancel_until) VALUES (${Array(26).fill('?').join(',')})`);
     const pStmt = db.prepare('INSERT INTO payouts VALUES (?,?,?,?,?,?,?)');
     let accepted = 0, tries = 0;
     while (accepted < 10000) {
@@ -89,7 +93,7 @@ export function seedDatabase(db: DatabaseSync, seed = 260609): Record<string, nu
       const guestId = `guest-${3+Math.floor(random()*2998)}`, user:any=users.get(guestId);
       const guests = 1+Math.floor(random()*home.sleeps), q=priceStay(home,from,to,guests);
       const created = `${addDays(from,-(7+Math.floor(random()*100)))}T10:30:00.000Z`;
-      bStmt.run(id,`RAP-${String(i).padStart(6,'0')}`,home.id,guestId,from,to,guests,user.name,user.email,status,nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,status==='cancelled'?q.totalCents:0,home.cancellation_policy,status==='cancelled'?'refunded':status==='pending'?'authorized':'paid',created,status==='cancelled'?`${addDays(from,-5)}T10:00:00.000Z`:null);
+      bStmt.run(id,`RAP-${String(i).padStart(6,'0')}`,home.id,guestId,from,to,guests,user.name,user.email,status,nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,status==='cancelled'?q.totalCents:0,home.cancellation_policy,status==='cancelled'?'refunded':status==='pending'?'authorized':'paid',created,status==='cancelled'?`${addDays(from,-5)}T10:00:00.000Z`:null,q.surchargeCents,q.holidayRefundDays,addDays(created.slice(0,10),1));
       if (['completed','confirmed'].includes(status)) {
         const date = addDays(from,1), paid=date<'2026-11-09';
         pStmt.run(`payout-${i}`,id,home.host_id,q.hostPayoutCents,date,paid?date:null,paid?'paid':'scheduled');
@@ -110,7 +114,7 @@ export function seedDatabase(db: DatabaseSync, seed = 260609): Record<string, nu
         db.prepare("UPDATE bookings SET status='cancelled', payment_status='refunded', refund_cents=total_cents, cancelled_at='2026-07-01T10:00:00.000Z' WHERE id=?").run(conflict.id);
         db.prepare("UPDATE payouts SET status='cancelled', paid_date=NULL WHERE booking_id=?").run(conflict.id);
       }
-      bStmt.run(id,`RAP-DEMO0${i+1}`,home.id,'guest-1',from,to,2,'Mira Valewood','mira@example.test',status,q.nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,0,home.cancellation_policy,'paid','2026-07-01T10:00:00.000Z',null);
+      bStmt.run(id,`RAP-DEMO0${i+1}`,home.id,'guest-1',from,to,2,'Mira Valewood','mira@example.test',status,q.nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,0,home.cancellation_policy,'paid','2026-07-01T10:00:00.000Z',null,q.surchargeCents,q.holidayRefundDays,'2026-07-02');
       const date=addDays(from,1);pStmt.run(`payout-demo-${i+1}`,id,home.host_id,q.hostPayoutCents,date,status==='completed'?date:null,status==='completed'?'paid':'scheduled');
     }
     const support = [

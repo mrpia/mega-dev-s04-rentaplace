@@ -66,6 +66,7 @@ export function PriceLines({ q }: { q: Quote }) {
     <div className="grid gap-2.5">
       {q.weeknightNights ? <Line label={`${plural(q.weeknightNights, 'weeknight')} × ${money(q.weeknightCents)}`} value={money(q.weeknightNights * q.weeknightCents)} /> : null}
       {q.weekendNights ? <Line label={`${q.weekendNights} weekend ${q.weekendNights === 1 ? 'night' : 'nights'} × ${money(q.weekendCents)}`} value={money(q.weekendNights * q.weekendCents)} /> : null}
+      {q.surchargeCents ? <Line label={`Holiday surcharge: ${q.surchargePercent}% on ${q.holidayNights} ${q.holidayNights === 1 ? 'night' : 'nights'}`} value={money(q.surchargeCents)} /> : null}
       <Line label="Cleaning fee" value={money(q.cleaningCents)} />
       <Separator />
       <Line label="Subtotal before fees & tax" value={money(q.subtotalCents)} className="font-medium [&>span:first-child]:text-foreground" />

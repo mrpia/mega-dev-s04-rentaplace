@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { nearbyListings, parseSearch } from '../src/domain/search.ts';
 import type { Listing } from '../src/types.ts';
 const q=parseSearch(new URLSearchParams('from=2026-11-10&to=2026-11-13'));
-const home=(id:string,extra:Partial<Listing>={}):Listing=>({id,slug:id,title:id,description:'A quiet home',host_id:'host-1',neighbourhood:'Pine Hollow',region:'Smoky Mountains',lat:35,lng:-83,sleeps:4,bedrooms:2,beds:2,bathrooms:1,nightly_cents:10000,weekend_cents:12000,cleaning_cents:5000,cancellation_policy:'flexible',status:'active',instant_book:1,amenities:['Wifi','Kitchen'],photos:[],rating:4.5,review_count:5,created_at:'',updated_at:'',...extra});
+const home=(id:string,extra:Partial<Listing>={}):Listing=>({id,slug:id,title:id,description:'A quiet home',host_id:'host-1',neighbourhood:'Pine Hollow',region:'Smoky Mountains',lat:35,lng:-83,sleeps:4,bedrooms:2,beds:2,bathrooms:1,nightly_cents:10000,weekend_cents:12000,cleaning_cents:5000,cancellation_policy:'flexible',status:'active',instant_book:1,amenities:['Wifi','Kitchen'],photos:[],rating:4.5,review_count:5,created_at:'',updated_at:'',holiday_dates:[],holiday_surcharge_pct:null,holiday_refund_days:null,...extra});
 test('free homes appear and occupied homes are omitted',()=>{
  const results=nearbyListings([home('a'),home('b')],[{id:'stay-1',listing_id:'a',from_date:'2026-11-11',to_date:'2026-11-13',status:'confirmed'}],q);
  assert.deepEqual(results.map(h=>h.id),['b']);

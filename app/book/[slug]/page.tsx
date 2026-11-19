@@ -14,7 +14,7 @@ import { attempt, currentUser, db, flag, homeBySlug, toURLSearchParams, type Sea
 import { capitalize, dateLabel, fullDate, money, plural } from '@/lib/format';
 import { stayParams } from '../../../src/stay.ts';
 import { quote } from '../../../src/domain/bookings.ts';
-import { policyText } from '../../../src/domain/cancellation.ts';
+import { freeCancellationText, holidayWindowText, policyText } from '../../../src/domain/cancellation.ts';
 
 export const metadata = { title: 'Confirm your stay' };
 
@@ -37,7 +37,9 @@ export default async function Checkout({ params, searchParams }: { params: Promi
   if (!result.ok) {
     return (
       <Page className="max-w-3xl">
-        <Alert variant="destructive"><AlertTitle>These dates aren’t available.</AlertTitle><AlertDescription>{result.error.message}</AlertDescription></Alert>
+        {result.error.code === 'LISTING_NOT_BOOKABLE'
+          ? <Alert variant="destructive"><AlertTitle>This home isn’t taking reservations.</AlertTitle><AlertDescription>If you already have a stay here, it still stands; you’ll find it in Your trips.</AlertDescription></Alert>
+          : <Alert variant="destructive"><AlertTitle>These dates aren’t available.</AlertTitle><AlertDescription>{result.error.message}</AlertDescription></Alert>}
         <Button asChild variant="outline" className="mt-6"><Link href={back}><ChevronLeft />Back to {home.title}</Link></Button>
       </Page>
     );
@@ -79,7 +81,8 @@ export default async function Checkout({ params, searchParams }: { params: Promi
             <Step n={3} title="Demo payment"><DemoCardField /></Step>
             <Step n={4} title="A few things to know">
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>{policyText[home.cancellation_policy]} No refunds after check-in.</p>
+                <p>{freeCancellationText} {policyText[home.cancellation_policy]} No refunds after check-in.</p>
+                {q.holidayRefundDays ? <p>{holidayWindowText(q.holidayRefundDays)}</p> : null}
                 <p>Check-in after 3 pm, check-out by 11 am. No smoking indoors. This entire marketplace uses fictional homes and accounts.</p>
               </div>
               <Label className="-mx-2 cursor-pointer rounded-lg px-2 py-2.5 font-normal hover:bg-muted/60"><Checkbox name="agree" value="1" required />I’ve reviewed the house rules and cancellation policy.</Label>
