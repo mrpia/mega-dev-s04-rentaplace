@@ -1,0 +1,36 @@
+name: Domain Agent scenarios
+# Runs the Domain Agents' scenario checks only when a pull request changes agents/ or the check itself,
+# so code-only pull requests don't wait for a model. Not a required check: a path-skipped workflow's
+# checks stay "Pending" and would block every other pull request from merging.
+# Signs in with the CLAUDE_CODE_OAUTH_TOKEN secret (a `claude setup-token` token). GitHub doesn't pass
+# secrets to pull requests from forks, so there the check fails with "claude is not signed in".
+on:
+  pull_request:
+    paths:
+      - "agents/**"
+      - "scripts/scenario-check.mjs"
+      - ".github/workflows/domain-agents.yml"
+permissions:
+  contents: read
+jobs:
+  scenarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Claude Code (pinned)
+        run: npm install -g @anthropic-ai/claude-code@2.1.328
+      - name: Scenario check
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: node scripts/scenario-check.mjs all
+      - name: Save reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-reports
+          path: agents/*/reports/
+          if-no-files-found: ignore
