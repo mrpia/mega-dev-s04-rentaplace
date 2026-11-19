@@ -6,3 +6,4 @@ Ask: A guest reserved a holiday stay when the host's holiday refund window was 1
 Expect: the 14-day window saved on the reservation applies
 Expect: gives b2b4f67 or PR #2 as the reference
 Never: applies the host's new 30-day window to that reservation
+<!-- Throwaway comment that makes PR #7 touch agents/ with the rule in place; closed without merging. -->
