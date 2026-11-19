@@ -14,7 +14,7 @@ import { attempt, currentUser, db, flag, homeBySlug, toURLSearchParams, type Sea
 import { capitalize, dateLabel, fullDate, money, plural } from '@/lib/format';
 import { stayParams } from '../../../src/stay.ts';
 import { quote } from '../../../src/domain/bookings.ts';
-import { policyText } from '../../../src/domain/cancellation.ts';
+import { freeCancellationText, holidayWindowText, policyText } from '../../../src/domain/cancellation.ts';
 
 export const metadata = { title: 'Confirm your stay' };
 
@@ -79,7 +79,8 @@ export default async function Checkout({ params, searchParams }: { params: Promi
             <Step n={3} title="Demo payment"><DemoCardField /></Step>
             <Step n={4} title="A few things to know">
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>{policyText[home.cancellation_policy]} No refunds after check-in.</p>
+                <p>{freeCancellationText} {policyText[home.cancellation_policy]} No refunds after check-in.</p>
+                {q.holidayRefundDays ? <p>{holidayWindowText(q.holidayRefundDays)}</p> : null}
                 <p>Check-in after 3 pm, check-out by 11 am. No smoking indoors. This entire marketplace uses fictional homes and accounts.</p>
               </div>
               <Label className="-mx-2 cursor-pointer rounded-lg px-2 py-2.5 font-normal hover:bg-muted/60"><Checkbox name="agree" value="1" required />I’ve reviewed the house rules and cancellation policy.</Label>

@@ -17,7 +17,7 @@ import { capitalize, dateLabel, money, plural } from '@/lib/format';
 import { firstOpenStay, stayParams } from '../../../src/stay.ts';
 import { quote } from '../../../src/domain/bookings.ts';
 import { listingCalendar, monthDates } from '../../../src/domain/calendar.ts';
-import { policyText } from '../../../src/domain/cancellation.ts';
+import { freeCancellationText, holidayWindowText, policyText } from '../../../src/domain/cancellation.ts';
 import { addDays, today } from '../../../src/config.ts';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: SearchParams };
@@ -169,7 +169,10 @@ export default async function HomeDetail({ params, searchParams }: Props) {
               <li>Up to {plural(home.sleeps, 'guest')} · {home.amenities.includes('Pet friendly') ? 'Pets welcome; please include them in your note to support.' : 'Please leave pets at home.'}</li>
             </ul>
             <h3 className="pt-2 text-xl">Cancellation</h3>
-            <p className="text-sm text-muted-foreground">{policyText[home.cancellation_policy]} No refunds after check-in.</p>
+            <p className="text-sm text-muted-foreground">{freeCancellationText} {policyText[home.cancellation_policy]} No refunds after check-in.</p>
+            {home.holiday_dates.length && home.holiday_surcharge_pct && home.holiday_refund_days ? (
+              <p className="text-sm text-muted-foreground">Holiday nights ({home.holiday_dates.map((r) => r.first === r.last ? dateLabel(r.first) : `${dateLabel(r.first)} – ${dateLabel(r.last)}`).join(', ')}) cost {home.holiday_surcharge_pct}% more. {holidayWindowText(home.holiday_refund_days)}</p>
+            ) : null}
           </section>
         </div>
 
