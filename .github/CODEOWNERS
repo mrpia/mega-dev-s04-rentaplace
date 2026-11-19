@@ -25,3 +25,6 @@
 /src/server.ts @johnlindquist
 /src/router.ts @johnlindquist
 /db/ @johnlindquist
+# Domain Agents (agents/<name>/): changes go to the owner of that domain
+/agents/booking/ @mrpia
+/agents/pricing/ @mrpia
