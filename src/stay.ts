@@ -1,10 +1,10 @@
 import { addDays, today } from './config.ts';
-import { validateDates } from './domain/pricing.ts';
+import { validateBookableDates } from './domain/pricing.ts';
 
 /** Dates and party size from a page address, defaulting to a three-night stay starting tomorrow. */
 export function stayParams(url: URLSearchParams) {
   const from = url.get('from') || addDays(today(), 1), to = url.get('to') || addDays(from, 3), guests = Number(url.get('guests') || 2);
-  validateDates(from, to);
+  validateBookableDates(from, to);
   return { from, to, guests };
 }
 

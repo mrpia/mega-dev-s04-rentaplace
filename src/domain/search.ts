@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { decodeListing } from '../db.ts';
 import { addDays, today } from '../config.ts';
 import { integer, requireValue } from '../errors.ts';
-import { validateDates } from './pricing.ts';
+import { validateBookableDates } from './pricing.ts';
 import type { Listing, Stay } from '../types.ts';
 export class BrokenStayError extends Error {
   stay: Stay;
@@ -11,7 +11,7 @@ export class BrokenStayError extends Error {
 export type SearchQuery = {place: string; from: string; to: string; guests: number; minPrice: number; maxPrice: number; bedrooms: number; amenities: string[]; instant: boolean; sort: string; page: number; limit: number};
 export function parseSearch(params: URLSearchParams): SearchQuery {
   const from = params.get('from') || addDays(today(),1), to = params.get('to') || addDays(from,3);
-  validateDates(from,to);
+  validateBookableDates(from,to);
   const sort = params.get('sort') || 'recommended';
   requireValue(['recommended','price','rating'].includes(sort),'Choose recommended, price, or rating sort.');
   const minPrice=integer(params.get('minPrice') || 0,'Minimum price',0,10000), maxPrice=integer(params.get('maxPrice') || 10000,'Maximum price',0,10000);

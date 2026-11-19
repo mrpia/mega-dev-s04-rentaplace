@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { priceStay, validateDates } from '../src/domain/pricing.ts';
+import { priceStay, validateBookableDates, validateDates } from '../src/domain/pricing.ts';
 import { anchors } from '../data/anchors.ts';
 const anchor=anchors.find(a=>a.slug==='lakeside-a-frame')!;
 const home={slug:anchor.slug,sleeps:anchor.sleeps,nightly_cents:anchor.nightly,weekend_cents:anchor.weekend,cleaning_cents:anchor.cleaning};
@@ -13,6 +13,10 @@ test('fees, taxes and host share use integer cents',()=>{
   assert.equal(q.accommodationCents,33003);assert.equal(q.serviceFeeCents,4680);assert.equal(q.taxCents,3120);
   assert.equal(q.totalCents,46803);assert.equal(q.hostPayoutCents,37833);
   Object.entries(q).filter(([key])=>key.endsWith('Cents')).forEach(([,v])=>assert.equal(Number.isInteger(v),true));
+});
+test('new stays require three nights without invalidating historical short-stay pricing',()=>{
+  assert.throws(()=>validateBookableDates('2026-11-09','2026-11-11'),/between 3 and 90 nights/);
+  assert.equal(priceStay(home,'2026-11-09','2026-11-10').nights,1);
 });
 test('a holiday night costs the host percentage on top of that night\'s own price, inside the subtotal',()=>{
   // 23 Dec 2026 is a Wednesday: nights Wed 23 (weeknight), Thu 24 (holiday weeknight), Fri 25 (holiday weekend night).
