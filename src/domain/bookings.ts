@@ -6,10 +6,10 @@ import { listingBySlug, transaction } from '../db.ts';
 import { AppError, textInput, emailInput, requireValue, integer } from '../errors.ts';
 import { priceStay, validateDates } from './pricing.ts';
 import { schedulePayout } from './payouts.ts';
-import { cancellationRefund } from './cancellation.ts';
+import { refundBreakdown } from './cancellation.ts';
 import { log } from '../log.ts';
 import { enabled } from '../flags.ts';
-import { now, today, OUTBOX_DIR } from '../config.ts';
+import { addDays, now, today, OUTBOX_DIR } from '../config.ts';
 import { requireUser } from '../auth.ts';
 import type { Account } from '../types.ts';
 export function assertAvailable(db: DatabaseSync,listingId: string,from: string,to: string) {
@@ -68,7 +68,9 @@ export function createBooking(db: DatabaseSync,input: any,account: Account | und
     assertAvailable(db,home.id,from,to);
     const q=priceStay(home,from,to,guests),id=randomUUID(),reference=`RAP-${id.slice(0,8).toUpperCase()}`;
     const status=home.instant_book && enabled(db,'instant_booking')?'confirmed':'pending';
-    db.prepare(`INSERT INTO bookings (id,reference,listing_id,guest_id,from_date,to_date,guests,guest_name,guest_email,status,nights,accommodation_cents,cleaning_cents,subtotal_cents,service_fee_cents,tax_cents,total_cents,host_payout_cents,policy,payment_status,created_at,idempotency_key) VALUES (${Array(22).fill('?').join(',')})`).run(id,reference,home.id,user.id,from,to,guests,name,email,status,q.nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,home.cancellation_policy,status==='confirmed'?'paid':'authorized',now(),key);
+    // The surcharge, the holiday window and the free cancellation period are saved here, so later host edits never reach this reservation (decision 0003).
+    const freeCancelUntil=addDays(today(),1);
+    db.prepare(`INSERT INTO bookings (id,reference,listing_id,guest_id,from_date,to_date,guests,guest_name,guest_email,status,nights,accommodation_cents,cleaning_cents,subtotal_cents,service_fee_cents,tax_cents,total_cents,host_payout_cents,policy,payment_status,created_at,idempotency_key,surcharge_cents,holiday_refund_days,free_cancel_until) VALUES (${Array(25).fill('?').join(',')})`).run(id,reference,home.id,user.id,from,to,guests,name,email,status,q.nights,q.accommodationCents,q.cleaningCents,q.subtotalCents,q.serviceFeeCents,q.taxCents,q.totalCents,q.hostPayoutCents,home.cancellation_policy,status==='confirmed'?'paid':'authorized',now(),key,q.surchargeCents,q.holidayRefundDays,freeCancelUntil);
     const booking:any=db.prepare('SELECT * FROM bookings WHERE id=?').get(id);
     if(status==='confirmed')payout=schedulePayout(db,booking,home.host_id);
     queueConfirmation(db,booking,home.title);
@@ -92,11 +94,11 @@ export function cancelBooking(db: DatabaseSync,id: string,user: Account | undefi
   const booking=guestBooking(db,id,user);
   if(booking.status==='cancelled')return booking;
   requireValue(['confirmed','pending'].includes(booking.status) && booking.from_date>=today(),'This reservation can no longer be cancelled online. Contact support for help.');
-  const refund=booking.status==='pending'?booking.total_cents:cancellationRefund(booking,today());
-  const refundedAccommodation=refund===booking.total_cents?booking.accommodation_cents:refund===booking.cleaning_cents?0:Math.round(booking.accommodation_cents/2);
-  const retainedAccommodation=booking.accommodation_cents-refundedAccommodation;
-  const hostPayout=retainedAccommodation-Math.round(retainedAccommodation*3/100);
-  const paymentStatus=refund===booking.total_cents?'refunded':refund>0?'partially_refunded':'paid';
+  const breakdown=refundBreakdown(booking,today()),refund=breakdown.refundCents;
+  // The host keeps the accommodation and holiday surcharge the guest doesn't get back, less the 3% platform fee; a full refund leaves nothing.
+  const retained=breakdown.full?0:booking.accommodation_cents-breakdown.refundedAccommodationCents+(booking.surcharge_cents ?? 0);
+  const hostPayout=retained-Math.round(retained*3/100);
+  const paymentStatus=breakdown.full?'refunded':refund>0?'partially_refunded':'paid';
   const cancelled=transaction(db,()=>{
     const result=db.prepare("UPDATE bookings SET status='cancelled',refund_cents=?,cancelled_at=?,payment_status=?,host_payout_cents=? WHERE id=? AND status IN ('confirmed','pending')").run(refund,now(),paymentStatus,hostPayout,id);
     if(!result.changes)throw new AppError(409,'STATUS_CHANGED','This reservation changed. Refresh before continuing.');

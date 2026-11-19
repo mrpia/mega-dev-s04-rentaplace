@@ -219,6 +219,62 @@
         "test/search.test.ts"
       ],
       "branch": "sort-by-rating"
+    },
+    {
+      "id": "holiday-surcharge",
+      "title": "Holiday surcharge on each host's holiday nights",
+      "column": "checking",
+      "owner": "Reservations",
+      "description": "Split from the holiday card on 2026-11-19; decisions in docs/decisions/0003-holiday-pricing-and-refunds.md. Hosts set holiday dates, a surcharge of 1 to 50% and refund days (1 to 60) per listing, all three or none. A holiday night is the night starting on a holiday date; its surcharge is the percentage of that night's own price, rounded per night, inside the subtotal, and the host keeps it less 3%. A partial refund never returns it or its tax. Saved on the reservation; later edits don't reach it.",
+      "labels": [
+        "feature",
+        "pricing"
+      ],
+      "files": [
+        "src/domain/pricing.ts",
+        "src/domain/listings.ts",
+        "src/domain/bookings.ts",
+        "web/components/stay.tsx",
+        "web/components/listing-editor.tsx",
+        "db/migrations/003-holidays.sql",
+        "test/pricing.test.ts",
+        "test/host.test.ts"
+      ]
+    },
+    {
+      "id": "free-cancellation-period",
+      "title": "Free cancellation through the business day after reserving",
+      "column": "checking",
+      "owner": "Reservations",
+      "description": "Split from the holiday card on 2026-11-19, where it was a \"24-hour hold\"; decisions in docs/decisions/0003-holiday-pricing-and-refunds.md. Every new reservation can be cancelled for a full refund, service fee included, whatever the policy, on the day it is made and the next business date. Reservations made before it have no period.",
+      "labels": [
+        "feature",
+        "pricing"
+      ],
+      "files": [
+        "src/domain/cancellation.ts",
+        "src/domain/bookings.ts",
+        "app/trips/[id]/cancel/page.tsx",
+        "test/cancellation.test.ts",
+        "test/bookings.test.ts"
+      ]
+    },
+    {
+      "id": "holiday-refund-window",
+      "title": "Holiday refund window set by the host",
+      "column": "checking",
+      "owner": "Reservations",
+      "description": "Split from the holiday card on 2026-11-19; decisions in docs/decisions/0003-holiday-pricing-and-refunds.md. A holiday stay gets a full refund when cancelled at least the host's number of days before check-in; the guest gets whichever of that and the listing's policy refunds more, so the window only adds to refunds. Pending requests keep their full refund. Saved on the reservation.",
+      "labels": [
+        "feature",
+        "pricing"
+      ],
+      "files": [
+        "src/domain/cancellation.ts",
+        "src/domain/bookings.ts",
+        "test/cancellation.test.ts",
+        "test/bookings.test.ts"
+      ]
     }
   ]
 }

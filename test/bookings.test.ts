@@ -63,9 +63,41 @@ test('a failed confirmation insert rolls back the booking and payout together',(
  assert.throws(()=>createBooking(db,input,guest),/outbox unavailable/);assert.equal((db.prepare('SELECT COUNT(*) n FROM bookings').get() as any).n,0);assert.equal((db.prepare('SELECT COUNT(*) n FROM payouts').get() as any).n,0);db.close();
 });
 
+// Business date for the call, restored afterwards: reservations are made on 2026-11-09 and cancelled later.
+function on<T>(date: string, fn: () => T): T {const prior=process.env.RAP_TODAY;process.env.RAP_TODAY=date;try{return fn();}finally{process.env.RAP_TODAY=prior;}}
+function holidays(db: any,slug: string,pct=20,days=30) {db.prepare('UPDATE listings SET holiday_dates=?,holiday_surcharge_pct=?,holiday_refund_days=? WHERE slug=?').run(JSON.stringify([{first:'2026-11-23',last:'2026-11-29'}]),pct,days,slug);}
 test('strict cancellation preserves the host share of retained accommodation',()=>{
+ // Cancelled two business days after reserving, past the free cancellation period; 14 days before check-in, same 5 weeknights and 2 weekend nights.
  const {db}=fixture();db.prepare("UPDATE listings SET cancellation_policy='strict' WHERE slug=?").run(input.slug);
- const {booking}=createBooking(db,{...input,from:'2026-11-23',to:'2026-11-30'},guest);
- const cancelled=cancelBooking(db,booking.id,guest);assert.equal(cancelled.refund_cents,51060);assert.equal(cancelled.payment_status,'partially_refunded');assert.equal(cancelled.host_payout_cents,40255);
+ const {booking}=createBooking(db,{...input,from:'2026-11-25',to:'2026-12-02'},guest);
+ const cancelled=on('2026-11-11',()=>cancelBooking(db,booking.id,guest));assert.equal(cancelled.refund_cents,51060);assert.equal(cancelled.payment_status,'partially_refunded');assert.equal(cancelled.host_payout_cents,40255);
  const payout=hostPayouts(db,host.id).items[0];assert.equal(payout.status,'scheduled');assert.equal(payout.amount_cents,40255);db.close();
+});
+test('a reservation cancelled within its free cancellation period is refunded in full, whatever the policy',()=>{
+ const {db}=fixture();db.prepare("UPDATE listings SET cancellation_policy='strict' WHERE slug=?").run(input.slug);
+ const {booking}=createBooking(db,{...input,from:'2026-11-25',to:'2026-12-02'},guest);assert.equal(booking.free_cancel_until,'2026-11-10');
+ const cancelled=on('2026-11-10',()=>cancelBooking(db,booking.id,guest));assert.equal(cancelled.refund_cents,booking.total_cents);assert.equal(cancelled.payment_status,'refunded');assert.equal(hostPayouts(db,host.id).items[0].status,'cancelled');db.close();
+});
+test('a holiday reservation saves its surcharge and refund window, and checkout charges the quote',()=>{
+ const {db}=fixture();holidays(db,input.slug);
+ const q=quote(db,input.slug,'2026-11-23','2026-11-30',2),{booking}=createBooking(db,{...input,from:'2026-11-23',to:'2026-11-30'},guest);
+ assert.equal(q.surchargeCents,16600);assert.equal(booking.surcharge_cents,16600);assert.equal(booking.accommodation_cents,83000);
+ assert.equal(booking.total_cents,q.totalCents);assert.equal(booking.host_payout_cents,q.hostPayoutCents);assert.equal(booking.holiday_refund_days,30);db.close();
+});
+test('a partial refund of a holiday stay leaves the host the surcharge, minus the platform fee',()=>{
+ const {db}=fixture();db.prepare("UPDATE listings SET cancellation_policy='strict' WHERE slug=?").run(input.slug);holidays(db,input.slug);
+ const {booking}=createBooking(db,{...input,from:'2026-11-25',to:'2026-12-02'},guest);assert.equal(booking.surcharge_cents,12200);
+ const cancelled=on('2026-11-11',()=>cancelBooking(db,booking.id,guest));assert.equal(cancelled.refund_cents,51060);assert.equal(cancelled.payment_status,'partially_refunded');assert.equal(cancelled.host_payout_cents,52089);
+ assert.equal(hostPayouts(db,host.id).items[0].amount_cents,52089);db.close();
+});
+test('host edits after reserving leave the saved holiday window in force',()=>{
+ const {db}=fixture();db.prepare("UPDATE listings SET cancellation_policy='strict' WHERE slug=?").run(input.slug);holidays(db,input.slug,20,10);
+ const {booking}=createBooking(db,{...input,from:'2026-11-23',to:'2026-11-30'},guest);
+ db.prepare("UPDATE listings SET holiday_dates='[]',holiday_surcharge_pct=NULL,holiday_refund_days=NULL WHERE slug=?").run(input.slug);
+ const cancelled=on('2026-11-13',()=>cancelBooking(db,booking.id,guest));assert.equal(cancelled.refund_cents,booking.total_cents);db.close();
+});
+test('a pending holiday request still refunds its full total when the guest cancels',()=>{
+ const {db}=fixture();db.prepare("UPDATE listings SET cancellation_policy='strict' WHERE slug='courtyard-loft'").run();holidays(db,'courtyard-loft');
+ const {booking}=createBooking(db,{...input,slug:'courtyard-loft',from:'2026-11-23',to:'2026-11-30'},guest);assert.equal(booking.status,'pending');
+ const cancelled=on('2026-11-20',()=>cancelBooking(db,booking.id,guest));assert.equal(cancelled.refund_cents,booking.total_cents);db.close();
 });

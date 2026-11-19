@@ -17,6 +17,7 @@ const BLANK = {
   title: '', description: '', neighbourhood: '', region: '', sleeps: 4, bedrooms: 2, beds: 2, bathrooms: 1,
   nightly_cents: 12000, weekend_cents: 15000, cleaning_cents: 5000, cancellation_policy: 'flexible', status: 'paused',
   instant_book: 1, amenities: ['Wifi', 'Kitchen'], photos: ['/img/photos/cabin-0.jpg', '/img/photos/interior-0.jpg'], lat: 38.95, lng: -120.05,
+  holiday_dates: [] as { first: string; last: string }[], holiday_surcharge_pct: null as number | null, holiday_refund_days: null as number | null,
 };
 
 function Field({ id, label, children, className }: { id: string; label: string; children: React.ReactNode; className?: string }) {
@@ -66,11 +67,18 @@ export function ListingEditor({ home }: { home?: Listing }) {
               </div>
             </fieldset>
           </Section>
-          <Section title="Prices that feel right" description="Weekend rates apply to Friday and Saturday nights. Your host share is the nightly charges and cleaning fee, less a 3% platform fee.">
+          <Section title="Prices that feel right" description="Weekend rates apply to Friday and Saturday nights. Your host share is the nightly charges, any holiday surcharge and the cleaning fee, less a 3% platform fee.">
             <div className="grid gap-4 sm:grid-cols-3">
               <Field id="nightly" label="Weeknight rate (USD)"><Input id="nightly" type="number" name="nightlyDollars" min={1} max={10000} step=".01" defaultValue={(h.nightly_cents / 100).toFixed(2)} required /></Field>
               <Field id="weekend" label="Weekend rate (USD)"><Input id="weekend" type="number" name="weekendDollars" min={1} max={10000} step=".01" defaultValue={(h.weekend_cents / 100).toFixed(2)} required /></Field>
               <Field id="cleaning" label="Cleaning fee (USD)"><Input id="cleaning" type="number" name="cleaningDollars" min={0} max={10000} step=".01" defaultValue={(h.cleaning_cents / 100).toFixed(2)} required /></Field>
+            </div>
+          </Section>
+          <Section title="Holiday pricing" description="Optional. Set all three or leave all three empty. A holiday night is the night that starts on a holiday date; it costs your percentage on top of that night’s rate. A stay with a holiday night gets a full refund when cancelled at least your number of days before check-in, or your cancellation policy’s refund if that is more. Changes apply to new reservations only.">
+            <Field id="holidayDates" label="Holiday dates"><Textarea id="holidayDates" name="holidayDates" rows={3} placeholder={'2026-12-24\n2026-11-16 to 2027-01-06'} defaultValue={h.holiday_dates.map((r) => r.first === r.last ? r.first : `${r.first} to ${r.last}`).join('\n')} className="font-mono text-xs" /></Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="holidaySurchargePercent" label="Holiday surcharge (%)"><Input id="holidaySurchargePercent" type="number" name="holidaySurchargePercent" min={1} max={50} step={1} defaultValue={h.holiday_surcharge_pct ?? ''} /></Field>
+              <Field id="holidayRefundDays" label="Full refund up to (days before check-in)"><Input id="holidayRefundDays" type="number" name="holidayRefundDays" min={1} max={60} step={1} defaultValue={h.holiday_refund_days ?? ''} /></Field>
             </div>
           </Section>
           <Section title="How you welcome guests">

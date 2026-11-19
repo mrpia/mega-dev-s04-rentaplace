@@ -21,13 +21,13 @@ CODEOWNERS identifies the repository owner for these paths. A change that crosse
 
 Confirmed and pending reservations hold dates. Checkout is exclusive, so a guest can arrive on the previous guest's checkout date. The database owns availability at checkout. A repeated idempotency key returns the existing reservation if the guest, home, dates, and guest count agree.
 
-On cancellation, a full refund cancels the scheduled payout. A partial refund leaves the host share of retained accommodation scheduled, after the platform fee.
+On cancellation, a full refund cancels the scheduled payout. A partial refund leaves the host share of retained accommodation and the holiday surcharge scheduled, after the platform fee. The refund rules a reservation is made under (free cancellation period, holiday refund window) are saved on it, so later listing edits never change them (decision 0003).
 
 The outbox writer copies pending messages to `outbox/<id>.json` using a temporary file and atomic rename. Delivery failures leave the row pending for retry at startup or the next booking. There is no mail transport.
 
 ## Money and time
 
-Money uses integer cents. Each night is priced independently. Accommodation plus cleaning forms the subtotal; the guest pays a 12% service fee and 8% occupancy tax, each rounded once. The host receives the subtotal less a 3% platform fee. These rates are fixed demo business rules, not jurisdictional tax advice.
+Money uses integer cents. Each night is priced independently. A night that starts on one of the listing's holiday dates also carries the host's holiday surcharge, a percentage of that night's price rounded per night. Accommodation plus holiday surcharge plus cleaning forms the subtotal; the guest pays a 12% service fee and 8% occupancy tax, each rounded once. The host receives the subtotal less a 3% platform fee. These rates are fixed demo business rules, not jurisdictional tax advice.
 
 `RAP_TODAY` defaults to `2026-11-09`. Business dates and domain timestamps derive from that application date. Request durations use a monotonic timer. `RAP_TODAY=now` selects the current UTC date. The seed always uses its fixed historical dates and PRNG.
 
