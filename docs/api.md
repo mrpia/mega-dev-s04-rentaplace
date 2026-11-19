@@ -24,7 +24,7 @@ npm run rap -- book pine-hollow-cabin 2026-11-16 2026-11-19 2 --demo-payment --j
 
 Quotes validate dates, guest count and current availability. Each result includes a per-night array (with each night's holiday flag and surcharge), the holiday surcharge and refund window, subtotal, service fee, tax, total, and host share in cents. Search price filters are whole dollars; all stored amounts and returned price values are cents.
 
-POST `/api/bookings` accepts `slug`, `from`, `to`, `guests`, `cardNumber`, optional `guestName`, `guestEmail`, and `idempotencyKey`. Use the test number only. A fresh booking returns 201; a matching idempotent retry returns 200. An overlapping reservation returns 409. Requests for homes without instant confirmation remain pending until the owning host responds.
+POST `/api/bookings` accepts `slug`, `from`, `to`, `guests`, `cardNumber`, optional `guestName`, `guestEmail`, and `idempotencyKey`. Use the test number only. A fresh booking returns 201; a matching idempotent retry returns 200. An overlapping reservation returns 409. A paused or closed home returns 409 `LISTING_NOT_BOOKABLE` for quotes and new reservations; an idempotent retry of a reservation made before the home closed still returns that reservation. Requests for homes without instant confirmation remain pending until the owning host responds.
 
 POST `/api/bookings/{id}/cancel` computes the refund from the saved price snapshot and the terms saved on the reservation (free cancellation period, holiday refund window, policy; decision 0003) and adjusts scheduled payouts to the retained host share, which includes the holiday surcharge after a partial refund; full refunds cancel the payout. GET `/api/bookings` and `/api/bookings/{id}` are guest-scoped.
 

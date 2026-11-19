@@ -13,6 +13,11 @@ One meaning per word. People and agents use these words the same way in prompts,
 - **Listing**: a host's offer of one whole home: its title, region, photos, how many it sleeps, its prices and its cancellation policy. Code and tables say `listing`; pages say "home". They are the same thing.
 - **Region**: one of the 14 areas a guest searches by, such as Lake Tahoe.
 - **Sleeps**: the largest number of guests a listing accepts.
+- **Listing status**: whether a listing takes new reservations. The host sets it in the listing editor.
+  - **Active**: shown in search and open to new reservations.
+  - **Paused**: hidden from search; quotes and new reservations are refused. The host means it to be temporary.
+  - **Closed**: hidden from search; quotes and new reservations are refused. The host has stopped renting the home.
+  - Paused and closed stop only new reservations. Reservations already made stay as they are: the guest can cancel under the saved policy, and the host can still accept or decline a pending request.
 - **Instant book**: a listing setting. When it is on, a new reservation is confirmed at once. When it is off, the host must accept it first.
 
 ## Stays and dates

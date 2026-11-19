@@ -37,7 +37,9 @@ export default async function Checkout({ params, searchParams }: { params: Promi
   if (!result.ok) {
     return (
       <Page className="max-w-3xl">
-        <Alert variant="destructive"><AlertTitle>These dates aren’t available.</AlertTitle><AlertDescription>{result.error.message}</AlertDescription></Alert>
+        {result.error.code === 'LISTING_NOT_BOOKABLE'
+          ? <Alert variant="destructive"><AlertTitle>This home isn’t taking reservations.</AlertTitle><AlertDescription>If you already have a stay here, it still stands; you’ll find it in Your trips.</AlertDescription></Alert>
+          : <Alert variant="destructive"><AlertTitle>These dates aren’t available.</AlertTitle><AlertDescription>{result.error.message}</AlertDescription></Alert>}
         <Button asChild variant="outline" className="mt-6"><Link href={back}><ChevronLeft />Back to {home.title}</Link></Button>
       </Page>
     );
